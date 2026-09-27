@@ -167,8 +167,13 @@ function ToolOptions() {
     return <ShapeKindOptions />
   }
 
-  if (tool === "redeye" || tool === "heal" || tool === "blur" || tool === "sponge") {
-    return <OptionButton label="Reset tone" disabled={!selectedId} onClick={resetLook} />
+  if (tool === "redeye" || tool === "heal" || tool === "blur" || tool === "sponge" || tool === "blemish" || tool === "skin" || tool === "teeth" || tool === "eye" || tool === "object") {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="px-1 text-xs text-[var(--ed-secondary)]">Drag on the photo</span>
+        <OptionButton label="Reset tone" disabled={!selectedId} onClick={resetLook} />
+      </div>
+    )
   }
 
   return <p className="text-xs text-[var(--ed-muted)]">{hintFor(tool)}</p>
@@ -197,7 +202,8 @@ function ShapeKindOptions() {
 }
 
 function PhotoBin() {
-  const photos = useTemplateStore((state) => state.template.elements.filter((element) => element.type === "photo"))
+  const elements = useTemplateStore((state) => state.template.elements)
+  const photos = elements.filter((element) => element.type === "photo")
   const selectedId = useTemplateStore((state) => state.selectedId)
   const select = useTemplateStore((state) => state.selectElement)
   const apply = useTemplateStore((state) => state.applyPhotoAsset)
@@ -450,9 +456,16 @@ function toolLabel(tool: string): string {
     wand: "Wand",
     redeye: "Red Eye",
     heal: "Heal",
+    blemish: "Blemish",
+    skin: "Skin",
+    teeth: "Teeth",
+    eye: "Eyes",
+    face: "Face",
     clone: "Clone",
     blur: "Blur",
     sponge: "Sponge",
+    cleanup: "Cleanup",
+    object: "Object",
     brush: "Brush",
     eraser: "Eraser",
     bucket: "Bucket",

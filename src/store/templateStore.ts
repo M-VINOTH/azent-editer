@@ -25,6 +25,8 @@ import {
   type GenerateTemplateOptions,
 } from "../services/templateService"
 import { createId, lockedWithAncestors, moveLayers, nextZIndex, placeLayer, sortByZIndex, swapZIndex } from "../utils/geometry"
+import { clearedGrade } from "../utils/photoGrade"
+import { autoRetouch } from "../utils/photoRetouch"
 import { shapeSize, shapeSvgUrl, strokeGraphic } from "../utils/shapeGraphic"
 import { validateTemplate, type ValidationError } from "../utils/validation"
 
@@ -40,6 +42,13 @@ export type EditorTool =
   | "clone"
   | "blur"
   | "sponge"
+  | "blemish"
+  | "skin"
+  | "teeth"
+  | "eye"
+  | "face"
+  | "cleanup"
+  | "object"
   | "brush"
   | "eraser"
   | "bucket"
@@ -150,6 +159,7 @@ interface TemplateStore {
   applySelectionRefine: (id: string, imageUrl: string) => void
   applyPhotoLook: (patch: Partial<Pick<PhotoElement, "brightness" | "contrast" | "saturate" | "blur">>) => void
   resetPhotoLook: () => void
+  applyAutoRetouch: (kind: "skin" | "face") => Promise<void>
   placeMark: (x: number, y: number, kind: "shape" | "pencil") => void
   placeStroke: (points: { x: number; y: number }[], kind: "pencil" | "brush") => void
   paintBucket: (elementId?: string) => void
@@ -1490,12 +1500,37 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
       if (!current || current.type !== "photo") return state
       const blocked = lockedEdit(state.template.elements, current.id)
       if (blocked) return blocked
-      return photoPatch(
-        state,
-        { ...current, brightness: 0, contrast: 0, saturate: 0, blur: 0 },
-        "Reset photo tone",
-      )
+      return photoPatch(state, { ...current, ...clearedGrade() }, "Reset photo tone")
     }),
+
+  applyAutoRetouch: async (kind) => {
+    const state = get()
+    const current = selectedElement(state.template, state.selectedId)
+    if (!current || current.type !== "photo" || !current.imageUrl) {
+      set({ statusMessage: "Select a photo first." })
+      return
+    }
+    if (lockedWithAncestors(state.template.elements).has(current.id)) {
+      set({ statusMessage: "Unlock the photo before editing it." })
+      return
+    }
+    set({ statusMessage: kind === "face" ? "Enhancing the face…" : "Smoothing skin…" })
+    const imageUrl = await autoRetouch(current, kind)
+    if (!imageUrl) {
+      set({ statusMessage: "Could not retouch that photo." })
+      return
+    }
+    const latest = get().template.elements.find((element) => element.id === current.id)
+    if (!latest || latest.type !== "photo") return
+    get().updateElement(current.id, {
+      imageUrl,
+      sourceUrl: latest.sourceUrl ?? latest.imageUrl,
+      ...(kind === "face" ? { sharpness: Math.min(100, (latest.sharpness ?? 0) + 12), vibrance: Math.min(100, (latest.vibrance ?? 0) + 8) } : {}),
+    })
+    set({
+      statusMessage: kind === "face" ? "Face enhancement smoothed skin and lifted clarity." : "Skin smoothing applied.",
+    })
+  },
 
   placeMark: (x, y, kind) =>
     set((state) => {

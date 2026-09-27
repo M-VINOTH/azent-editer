@@ -1,5 +1,6 @@
 import type { AlbumTemplate, TemplateElement } from "../models/template"
 import { BLEND_MODES, PHOTO_ROLES, PHOTO_SHAPES, type LayerMask } from "../models/template"
+import { PHOTO_GRADE_KEYS } from "./photoGrade"
 
 const PHOTO_SHAPE_SET: ReadonlySet<string> = new Set(PHOTO_SHAPES)
 const MASK_KINDS: ReadonlySet<string> = new Set(["rectangle", "rounded", "circle", "polygon", "path", "png"])
@@ -117,7 +118,7 @@ function validateElement(element: TemplateElement, index: number): ValidationErr
     if (element.flipY !== undefined && typeof element.flipY !== "boolean") {
       errors.push({ path: `${path}.flipY`, message: "flipY must be a boolean." })
     }
-    for (const key of ["brightness", "contrast", "saturate", "blur"] as const) {
+    for (const key of ["brightness", "contrast", "saturate", "blur", ...PHOTO_GRADE_KEYS] as const) {
       if (element[key] !== undefined && !isNumber(element[key])) {
         errors.push({ path: `${path}.${key}`, message: `${key} must be numeric.` })
       }

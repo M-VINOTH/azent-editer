@@ -1,5 +1,13 @@
 import type { PhotoElement } from "../models/template"
+import { applyPhotoGrade, gradeActive } from "./photoGrade"
 import { clipPhotoShape, polaroidInsets } from "./photoShape"
+
+export type PhotoBitmap = HTMLImageElement | HTMLCanvasElement
+
+export function bitmapSize(image: PhotoBitmap): { width: number; height: number } {
+  if (image instanceof HTMLCanvasElement) return { width: image.width || 1, height: image.height || 1 }
+  return { width: image.naturalWidth || 1, height: image.naturalHeight || 1 }
+}
 
 export function loadHtmlImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -35,7 +43,7 @@ function cornerRadius(element: PhotoElement, width: number, height: number): num
 
 function drawFittedImage(
   ctx: CanvasRenderingContext2D,
-  image: HTMLImageElement,
+  image: PhotoBitmap,
   boxX: number,
   boxY: number,
   boxW: number,
@@ -47,12 +55,12 @@ function drawFittedImage(
   flipY = false,
   photoScale = 1,
 ): void {
+  const size = bitmapSize(image)
   const scale =
-    (fit === "contain"
-      ? Math.min(boxW / image.naturalWidth, boxH / image.naturalHeight)
-      : Math.max(boxW / image.naturalWidth, boxH / image.naturalHeight)) * photoScale
-  const drawW = image.naturalWidth * scale
-  const drawH = image.naturalHeight * scale
+    (fit === "contain" ? Math.min(boxW / size.width, boxH / size.height) : Math.max(boxW / size.width, boxH / size.height)) *
+    photoScale
+  const drawW = size.width * scale
+  const drawH = size.height * scale
   const limitX = Math.abs(drawW - boxW) / 2
   const limitY = Math.abs(drawH - boxH) / 2
   const dx = boxX + (boxW - drawW) / 2 + Math.min(limitX, Math.max(-limitX, panX))
@@ -101,7 +109,7 @@ function drawCutoutPlaceholder(
 function fillClippedPhoto(
   ctx: CanvasRenderingContext2D,
   element: PhotoElement,
-  image: HTMLImageElement | null,
+  image: PhotoBitmap | null,
   x: number,
   y: number,
   width: number,
@@ -130,22 +138,24 @@ function fillClippedPhoto(
   if (image && !hidePicture) {
     const panX = ((element.panX ?? 0) * width) / Math.max(element.width, 1)
     const panY = ((element.panY ?? 0) * height) / Math.max(element.height, 1)
-    ctx.filter = photoFilter(element)
-    drawFittedImage(
-      ctx,
-      image,
-      0,
-      0,
-      width,
-      height,
-      isCutout ? (element.objectFit ?? "contain") : element.objectFit,
-      panX,
-      panY,
-      element.flipX,
-      element.flipY,
-      element.photoScale ?? 1,
-    )
-    ctx.filter = "none"
+    const fit = isCutout ? (element.objectFit ?? "contain") : element.objectFit
+    if (gradeActive(element)) {
+      const buffer = document.createElement("canvas")
+      buffer.width = Math.max(1, Math.round(width))
+      buffer.height = Math.max(1, Math.round(height))
+      const graded = buffer.getContext("2d")
+      if (graded) {
+        graded.filter = photoFilter(element)
+        drawFittedImage(graded, image, 0, 0, buffer.width, buffer.height, fit, panX, panY, element.flipX, element.flipY, element.photoScale ?? 1)
+        graded.filter = "none"
+        applyPhotoGrade(graded, buffer.width, buffer.height, element)
+        ctx.drawImage(buffer, 0, 0)
+      }
+    } else {
+      ctx.filter = photoFilter(element)
+      drawFittedImage(ctx, image, 0, 0, width, height, fit, panX, panY, element.flipX, element.flipY, element.photoScale ?? 1)
+      ctx.filter = "none"
+    }
   } else if (!hidePicture && showLabel && element.role !== "wash" && !isCutout) {
     ctx.fillStyle = "#efe6d8"
     ctx.fillRect(0, 0, width, height)
@@ -173,7 +183,7 @@ function fillClippedPhoto(
 
 export function rasterizePhotoElement(
   element: PhotoElement,
-  image: HTMLImageElement | null,
+  image: PhotoBitmap | null,
   pixelWidth: number,
   pixelHeight: number,
   hidePicture = false,

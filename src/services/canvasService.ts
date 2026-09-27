@@ -21,7 +21,8 @@ import type {
   TextElement,
 } from "../models/template"
 import { sortByZIndex } from "../utils/geometry"
-import { loadHtmlImage, rasterizePhotoElement } from "../utils/photoRaster"
+import { clearedGrade, PHOTO_GRADE_KEYS } from "../utils/photoGrade"
+import { loadHtmlImage, rasterizePhotoElement, type PhotoBitmap } from "../utils/photoRaster"
 import { toCanvasBlendMode } from "../utils/photoShape"
 import { decorationSource } from "../utils/shapeGraphic"
 import { clippingBase, withLayerMask } from "../utils/layerMask"
@@ -147,10 +148,7 @@ function shownPhoto(element: PhotoElement): PhotoElement {
   if (!paintBefore) return element
   return {
     ...element,
-    brightness: 0,
-    contrast: 0,
-    saturate: 0,
-    blur: 0,
+    ...clearedGrade(),
     imageUrl: element.sourceUrl || element.imageUrl,
     role: element.role === "cutout" ? "slot" : element.role,
   }
@@ -499,6 +497,20 @@ export async function refreshPhotoObject(canvas: EditorCanvas, element: PhotoEle
   canvas.requestRenderAll()
 }
 
+export function previewPhotoBitmap(canvas: EditorCanvas, element: PhotoElement, source: PhotoBitmap): void {
+  const object = findObjectByElementId(canvas, element.id)
+  if (!object || !(object instanceof FabricImage)) return
+  const size = rasterSize(element)
+  const raster = rasterizePhotoElement(element, source, size.width, size.height)
+  object.setElement(raster)
+  object.set({
+    scaleX: element.width / Math.max(raster.width, 1),
+    scaleY: element.height / Math.max(raster.height, 1),
+  })
+  object.setCoords()
+  canvas.requestRenderAll()
+}
+
 export async function repaintPhotoCompare(
   canvas: EditorCanvas,
   elements: TemplateElement[],
@@ -529,6 +541,7 @@ function photoNeedsRaster(before: PhotoElement, next: PhotoElement): boolean {
     "contrast",
     "saturate",
     "blur",
+    ...PHOTO_GRADE_KEYS,
     "role",
     "objectFit",
     "width",

@@ -30,11 +30,18 @@ const GROUPS: { title: string; tools: ToolItem[] }[] = [
   {
     title: "Enhance",
     tools: [
-      { id: "redeye", label: "Red eye", hint: "Red eye — click a photo to pull the red back.", icon: "redeye" },
-      { id: "heal", label: "Heal", hint: "Healing brush — click a photo to lighten it.", icon: "heal" },
-      { id: "clone", label: "Clone", hint: "Clone stamp — click a layer to duplicate it.", icon: "clone" },
-      { id: "blur", label: "Blur", hint: "Blur — click a photo to soften it.", icon: "blur" },
-      { id: "sponge", label: "Sponge", hint: "Sponge — click a photo to add saturation.", icon: "sponge" },
+      { id: "redeye", label: "Red eye", hint: "Red eye — drag across the red pupil.", icon: "redeye" },
+      { id: "heal", label: "Heal", hint: "Healing — drag on a spot to repair it from the surrounding photo.", icon: "heal" },
+      { id: "blemish", label: "Blemish", hint: "Blemish — drag over a mark on the skin.", icon: "heal" },
+      { id: "skin", label: "Skin", hint: "Skin — drag to smooth skin. The Skin button smooths the whole photo.", icon: "sponge" },
+      { id: "teeth", label: "Teeth", hint: "Teeth — drag across the teeth to whiten them.", icon: "sponge" },
+      { id: "eye", label: "Eyes", hint: "Eyes — drag across an eye to lift contrast.", icon: "redeye" },
+      { id: "face", label: "Face", hint: "Face enhancement — click a photo to smooth skin and lift clarity.", icon: "subject" },
+      { id: "clone", label: "Clone", hint: "Clone — Option-click a source, then drag to paint it.", icon: "clone" },
+      { id: "blur", label: "Blur", hint: "Blur — drag on a photo to soften that spot.", icon: "blur" },
+      { id: "sponge", label: "Sponge", hint: "Sponge — drag on a photo to add saturation there.", icon: "sponge" },
+      { id: "cleanup", label: "Cleanup", hint: "Background cleanup — click a photo to remove the background.", icon: "subject" },
+      { id: "object", label: "Object", hint: "Object removal — drag over an object to fill it from the surrounding photo.", icon: "eraser" },
     ],
   },
   {
@@ -143,7 +150,7 @@ const GUIDED = [
   { title: "1. Move a layer", tool: "select" as const, detail: "Press V, then drag a photo or a line of type." },
   { title: "2. Crop a photo", tool: "crop" as const, detail: "Press C and drag inside a frame to reposition the picture." },
   { title: "3. Edit the type", tool: "text" as const, detail: "Press T and click the sheet, or double-click existing type." },
-  { title: "4. Tone a photo", tool: "sponge" as const, detail: "Use Sponge, Blur, or Red Eye on a photo." },
+  { title: "4. Tone a photo", tool: "sponge" as const, detail: "Drag Sponge, Blur, or Red Eye on a photo." },
   { title: "5. Share the spread", tool: "hand" as const, detail: "Use Share for a PNG, a PSD, or Photoshop." },
 ]
 

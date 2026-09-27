@@ -7,6 +7,7 @@ import {
   holdLockedSelection,
   objectIsHeld,
   readTransform,
+  previewPhotoBitmap,
   refreshPhotoObject,
   repaintPhotoCompare,
   renderTemplateOnCanvas,
@@ -23,6 +24,17 @@ import type { SheetGuide } from "../../store/templateStore"
 import { fitScale, hiddenWithAncestors, lockedWithAncestors } from "../../utils/geometry"
 import type { LayerMask, PhotoElement } from "../../models/template"
 import { hitMask, layerLocalPoint, maskNormalized, moveMask, paintMaskOverlay, type MaskGesture } from "../../utils/layerMask"
+import {
+  finishRetouch,
+  hasCloneSource,
+  openRetouch,
+  paintRetouch,
+  photoImagePoint,
+  RETOUCH_BRUSHES,
+  retouchCanvas,
+  setCloneSource,
+  type RetouchBrush,
+} from "../../utils/photoRetouch"
 
 export function AlbumCanvas() {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -219,6 +231,8 @@ export function AlbumCanvas() {
       if (commit) commitHistory()
     }
 
+    let retouch: { id: string; kind: RetouchBrush; lastX: number; lastY: number } | null = null
+    let retouchFrame = 0
     let crop: { id: string; lastX: number; lastY: number; moved: boolean } | null = null
     let hand: { x: number; y: number; panX: number; panY: number } | null = null
     let stroke: { kind: "pencil" | "brush"; points: { x: number; y: number }[] } | null = null
@@ -356,6 +370,24 @@ export function AlbumCanvas() {
       if (!hit) return
       guideDragRef.current = { id: hit.id, axis: hit.axis, at: hit.at }
     })
+    const paintRetouchAt = (id: string, kind: RetouchBrush, designX: number, designY: number) => {
+      const element = useTemplateStore.getState().template.elements.find((item) => item.id === id)
+      const source = retouchCanvas()
+      if (!element || element.type !== "photo" || !source) return
+      const local = layerLocalPoint(element, designX, designY)
+      const point = photoImagePoint(element, local.x, local.y, source.width, source.height)
+      if (!point) return
+      const radius = Math.max(10, Math.min(source.width, source.height) * 0.03)
+      paintRetouch(kind, point.x, point.y, radius)
+      if (retouchFrame) return
+      retouchFrame = window.requestAnimationFrame(() => {
+        retouchFrame = 0
+        const live = retouchCanvas()
+        const current = useTemplateStore.getState().template.elements.find((item) => item.id === id)
+        if (live && current?.type === "photo") previewPhotoBitmap(canvas, current, live)
+      })
+    }
+
     canvas.on("mouse:down", (opt) => {
       if (maskClaimRef.current || guideDragRef.current) {
         const editable = canvas as Canvas & { _currentTransform: unknown; _groupSelector: unknown }
@@ -422,14 +454,46 @@ export function AlbumCanvas() {
         selectElement(clickedId)
         return
       }
-      if (clickedId && (mode === "redeye" || mode === "heal" || mode === "blur" || mode === "sponge")) {
+      if (clickedId && (mode === "face" || mode === "cleanup")) {
         selectElement(clickedId)
-        useTemplateStore.getState().toneSelectedPhoto(mode)
+        if (mode === "cleanup") void useTemplateStore.getState().removeBackground(clickedId)
+        else void useTemplateStore.getState().applyAutoRetouch("face")
         return
       }
-      if (clickedId && mode === "clone") {
-        selectElement(clickedId)
-        useTemplateStore.getState().duplicateSelected()
+      if (RETOUCH_BRUSHES.has(mode)) {
+        const found = clickedId
+          ? useTemplateStore.getState().template.elements.find((item) => item.id === clickedId)
+          : undefined
+        if (!found || found.type !== "photo" || found.role === "wash" || !found.imageUrl) {
+          setStatus("Drag on a photo.")
+          return
+        }
+        if (opt.target && objectIsHeld(opt.target)) {
+          setStatus("Unlock the layer before editing it.")
+          return
+        }
+        selectElement(found.id)
+        const point = canvas.getScenePoint(pointerEvent)
+        if (mode === "clone" && pointerEvent.altKey) {
+          void openRetouch(found).then((size) => {
+            if (!size) return
+            const local = layerLocalPoint(found, point.x, point.y)
+            const mapped = photoImagePoint(found, local.x, local.y, size.width, size.height)
+            if (!mapped) return
+            setCloneSource(mapped.x, mapped.y)
+            setStatus("Clone source set. Drag to paint it.")
+          })
+          return
+        }
+        if (mode === "clone" && !hasCloneSource()) {
+          setStatus("Option-click the photo to set the clone source, then drag.")
+          return
+        }
+        retouch = { id: found.id, kind: mode as RetouchBrush, lastX: point.x, lastY: point.y }
+        void openRetouch(found).then(() => {
+          if (retouch?.id !== found.id) return
+          paintRetouchAt(found.id, retouch.kind, point.x, point.y)
+        })
         return
       }
       if (mode === "eraser") {
@@ -482,6 +546,18 @@ export function AlbumCanvas() {
     })
 
     const onMove = (event: MouseEvent) => {
+      if (retouch) {
+        const point = canvas.getScenePoint(event)
+        const dx = point.x - retouch.lastX
+        const dy = point.y - retouch.lastY
+        const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 18))
+        for (let step = 1; step <= steps; step += 1) {
+          paintRetouchAt(retouch.id, retouch.kind, retouch.lastX + (dx * step) / steps, retouch.lastY + (dy * step) / steps)
+        }
+        retouch.lastX = point.x
+        retouch.lastY = point.y
+        return
+      }
       const drag = maskDragRef.current
       if (drag) {
         const point = canvas.getScenePoint(event)
@@ -529,6 +605,15 @@ export function AlbumCanvas() {
     }
 
     const onUp = () => {
+      if (retouch) {
+        const done = retouch
+        retouch = null
+        const element = useTemplateStore.getState().template.elements.find((item) => item.id === done.id)
+        const url = finishRetouch(element?.type === "photo" && element.role === "cutout")
+        if (url && element?.type === "photo") {
+          updateElement(done.id, { imageUrl: url, sourceUrl: element.sourceUrl ?? element.imageUrl })
+        }
+      }
       if (maskDragRef.current) {
         const moved = maskDragRef.current.moved
         maskDragRef.current = null
@@ -649,6 +734,7 @@ export function AlbumCanvas() {
       observer.disconnect()
       window.clearTimeout(wheelCommit)
       window.cancelAnimationFrame(zoomFrame)
+      window.cancelAnimationFrame(retouchFrame)
       window.removeEventListener("mousemove", onMove)
       window.removeEventListener("mouseup", onUp)
       host.removeEventListener("wheel", onWheel)

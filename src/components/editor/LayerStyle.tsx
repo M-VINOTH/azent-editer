@@ -311,11 +311,78 @@ function PhotoStyle({
       ) : null}
       {showPhoto ? (
       <>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ed-muted)]">Adjust</p>
       <Slider label="Brightness" min={-80} max={80} value={element.brightness ?? 0} onChange={(brightness) => onChange({ brightness })} />
+      <Slider label="Exposure" min={-100} max={100} value={element.exposure ?? 0} onChange={(exposure) => onChange({ exposure })} />
       <Slider label="Contrast" min={-80} max={80} value={element.contrast ?? 0} onChange={(contrast) => onChange({ contrast })} />
+      <Slider label="Highlights" min={-100} max={100} value={element.highlights ?? 0} onChange={(highlights) => onChange({ highlights })} />
+      <Slider label="Shadows" min={-100} max={100} value={element.shadows ?? 0} onChange={(shadows) => onChange({ shadows })} />
       <Slider label="Saturation" min={-100} max={100} value={element.saturate ?? 0} onChange={(saturate) => onChange({ saturate })} />
+      <Slider label="Vibrance" min={-100} max={100} value={element.vibrance ?? 0} onChange={(vibrance) => onChange({ vibrance })} />
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ed-muted)]">White balance</p>
+      <Slider label="Temperature" min={-100} max={100} value={element.temperature ?? 0} onChange={(temperature) => onChange({ temperature })} />
+      <Slider label="Tint" min={-100} max={100} value={element.tint ?? 0} onChange={(tint) => onChange({ tint })} />
+      <Slider label="Sharpness" min={0} max={100} value={element.sharpness ?? 0} onChange={(sharpness) => onChange({ sharpness })} />
+      <Slider label="Blur" min={0} max={24} value={element.blur ?? 0} onChange={(blur) => onChange({ blur })} />
+      <Slider label="Noise reduction" min={0} max={100} value={element.noise ?? 0} onChange={(noise) => onChange({ noise })} />
+      <Slider label="Vignette" min={-100} max={100} value={element.vignette ?? 0} onChange={(vignette) => onChange({ vignette })} />
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ed-muted)]">Curves</p>
+      <Slider label="Curve shadows" min={-100} max={100} value={element.curveShadows ?? 0} onChange={(curveShadows) => onChange({ curveShadows })} />
+      <Slider label="Curve midtones" min={-100} max={100} value={element.curveMidtones ?? 0} onChange={(curveMidtones) => onChange({ curveMidtones })} />
+      <Slider label="Curve highlights" min={-100} max={100} value={element.curveHighlights ?? 0} onChange={(curveHighlights) => onChange({ curveHighlights })} />
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ed-muted)]">Levels</p>
+      <Slider label="Black point" min={0} max={100} value={element.levelsBlack ?? 0} onChange={(levelsBlack) => onChange({ levelsBlack })} />
+      <Slider label="Gamma" min={-100} max={100} value={element.levelsGamma ?? 0} onChange={(levelsGamma) => onChange({ levelsGamma })} />
+      <Slider label="White point" min={0} max={100} value={element.levelsWhite ?? 0} onChange={(levelsWhite) => onChange({ levelsWhite })} />
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ed-muted)]">HSL</p>
+      <Slider label="Hue" min={-180} max={180} value={element.hue ?? 0} onChange={(hue) => onChange({ hue })} />
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ed-muted)]">Color balance</p>
+      <Slider label="Cyan / Red" min={-100} max={100} value={element.balanceCyanRed ?? 0} onChange={(balanceCyanRed) => onChange({ balanceCyanRed })} />
+      <Slider label="Magenta / Green" min={-100} max={100} value={element.balanceMagentaGreen ?? 0} onChange={(balanceMagentaGreen) => onChange({ balanceMagentaGreen })} />
+      <Slider label="Yellow / Blue" min={-100} max={100} value={element.balanceYellowBlue ?? 0} onChange={(balanceYellowBlue) => onChange({ balanceYellowBlue })} />
+      <RetouchActions id={element.id} hasPhoto={Boolean(element.imageUrl)} />
       </>
       ) : null}
+    </div>
+  )
+}
+
+function RetouchActions({ id, hasPhoto }: { id: string; hasPhoto: boolean }) {
+  const setTool = useTemplateStore((state) => state.setTool)
+  const setStatus = useTemplateStore((state) => state.setStatus)
+  const applyAutoRetouch = useTemplateStore((state) => state.applyAutoRetouch)
+  const removeBackground = useTemplateStore((state) => state.removeBackground)
+  const actions: { label: string; run: () => void }[] = [
+    { label: "Skin", run: () => void applyAutoRetouch("skin") },
+    { label: "Face", run: () => void applyAutoRetouch("face") },
+    { label: "Cleanup", run: () => void removeBackground(id) },
+    { label: "Heal", run: () => { setTool("heal"); setStatus("Healing — drag on the spot you want to repair.") } },
+    { label: "Blemish", run: () => { setTool("blemish"); setStatus("Blemish — drag over a mark on the skin.") } },
+    { label: "Teeth", run: () => { setTool("teeth"); setStatus("Teeth — drag across the teeth only.") } },
+    { label: "Eyes", run: () => { setTool("eye"); setStatus("Eyes — drag across an eye to lift contrast.") } },
+    { label: "Red eye", run: () => { setTool("redeye"); setStatus("Red eye — drag across the red pupil.") } },
+    { label: "Object", run: () => { setTool("object"); setStatus("Object removal — drag over the object to fill it from the surrounding photo.") } },
+    { label: "Clone", run: () => { setTool("clone"); setStatus("Clone — Option-click a source, then drag to paint it.") } },
+  ]
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ed-muted)]">Retouch</p>
+      <div className="grid grid-cols-3 gap-1">
+        {actions.map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            disabled={!hasPhoto}
+            onClick={action.run}
+            className="rounded-md border border-[var(--ed-line)] px-1 py-1.5 text-[11px] text-[var(--ed-secondary)] disabled:opacity-40"
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] leading-4 text-[var(--ed-muted)]">
+        Brush paints on the sheet. Eraser removes a layer. The buttons above edit the photo itself.
+      </p>
     </div>
   )
 }
