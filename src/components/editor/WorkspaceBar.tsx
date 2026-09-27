@@ -59,7 +59,7 @@ export function WorkspaceBar() {
     close()
     const kept = await keepFile(options.name)
     if (kept === "cancel") {
-      setStatus("New file was not created. Choose where to save it and try again.")
+      setStatus("New file was not created. Choose a folder and try again.")
       return
     }
     newTemplate(options)
@@ -76,7 +76,7 @@ export function WorkspaceBar() {
     close()
     const kept = await keepFile(name)
     if (kept === "cancel") {
-      setStatus("Template was not created. Choose where to save it and try again.")
+      setStatus("Template was not created. Choose a folder and try again.")
       return
     }
     setStatus(`Opening ${name}… Large templates can take a minute.`)
@@ -107,7 +107,7 @@ export function WorkspaceBar() {
       return
     }
     await saveDocumentNow()
-    setStatus(`Saving the PSD to ${chosen.name}`)
+    setStatus(`Edits are saved to ${chosen.name}`)
   }
 
   const openFromDisk = async () => {
@@ -122,7 +122,10 @@ export function WorkspaceBar() {
       const psd = picked.file.name.toLowerCase().endsWith(".psd")
       if (psd) {
         const opened = await loadPsd(picked.file)
-        if (opened) picked.adopt()
+        if (opened) {
+          picked.adopt()
+          await saveDocumentNow()
+        }
         return
       }
       await loadJson(picked.file)
@@ -363,7 +366,7 @@ function CreateGallery({
         <div className="flex shrink-0 items-center justify-between border-b border-[var(--ed-line-soft)] px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold text-[var(--ed-ink)]">Create new</h2>
-            <p className="mt-0.5 text-xs text-[var(--ed-muted)]">Start from a plain sheet or a layout. You choose where to save the PSD, and edits are stored in that file.</p>
+            <p className="mt-0.5 text-xs text-[var(--ed-muted)]">Start from a plain sheet or a layout. Choose a folder. If that name already exists, a copy is created, and edits update the copy.</p>
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={onCustom} className="rounded-md border border-[var(--ed-accent)] px-3 py-1.5 text-sm text-[var(--ed-accent-ink)]">

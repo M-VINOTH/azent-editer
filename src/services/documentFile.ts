@@ -19,6 +19,14 @@ type TemplateFileHandle = {
   name: string
   createWritable(): Promise<WritableTemplate>
   getFile(): Promise<File>
+  queryPermission?: (descriptor: { mode: "readwrite" }) => Promise<PermissionState>
+  requestPermission?: (descriptor: { mode: "readwrite" }) => Promise<PermissionState>
+}
+
+type DirectoryHandle = {
+  getFileHandle(name: string, options?: { create?: boolean }): Promise<TemplateFileHandle>
+  queryPermission?: (descriptor: { mode: "readwrite" }) => Promise<PermissionState>
+  requestPermission?: (descriptor: { mode: "readwrite" }) => Promise<PermissionState>
 }
 
 type FilePickerWindow = Window & {
@@ -30,6 +38,7 @@ type FilePickerWindow = Window & {
     multiple?: boolean
     types?: { description?: string; accept: Record<string, string[]> }[]
   }) => Promise<TemplateFileHandle[]>
+  showDirectoryPicker?: (options?: { mode?: "read" | "readwrite" }) => Promise<DirectoryHandle>
 }
 
 const PSD_TYPE = {
@@ -60,21 +69,80 @@ export function subscribeSaveStatus(listener: (status: SaveStatus) => void): () 
 
 export function canChooseTemplateFile(): boolean {
   const host = window as FilePickerWindow
-  return typeof host.showSaveFilePicker === "function"
+  return typeof host.showDirectoryPicker === "function" || typeof host.showSaveFilePicker === "function"
 }
 
 function suggestedFileName(name: string): string {
   return `${slugify(name)}.psd`
 }
 
-export async function chooseTemplateFile(name: string): Promise<{ ok: true; name: string } | { ok: false; reason: "cancel" | "unsupported" }> {
-  const pick = (window as FilePickerWindow).showSaveFilePicker
-  if (!pick) return { ok: false, reason: "unsupported" }
+/** Ask once, while the folder picker click is still active, so later edits can write without another prompt. */
+async function grantWrite(file: {
+  queryPermission?: (descriptor: { mode: "readwrite" }) => Promise<PermissionState>
+  requestPermission?: (descriptor: { mode: "readwrite" }) => Promise<PermissionState>
+}): Promise<boolean> {
+  if (!file.queryPermission || !file.requestPermission) return true
+  const mode = { mode: "readwrite" as const }
   try {
-    const next = await pick({
-      suggestedName: suggestedFileName(name),
-      types: [PSD_TYPE],
-    })
+    if ((await file.queryPermission(mode)) === "granted") return true
+    return (await file.requestPermission(mode)) === "granted"
+  } catch {
+    return false
+  }
+}
+
+async function canWrite(file: TemplateFileHandle): Promise<boolean> {
+  if (!file.queryPermission) return true
+  return (await file.queryPermission({ mode: "readwrite" })) === "granted"
+}
+
+function nameOptions(fileName: string, copyOnly: boolean): string[] {
+  const base = fileName.replace(/\.psd$/i, "")
+  const names: string[] = []
+  if (!copyOnly) names.push(`${base}.psd`)
+  names.push(`${base} copy.psd`)
+  for (let index = 2; index < 50; index += 1) names.push(`${base} copy ${index}.psd`)
+  return names
+}
+
+async function createUnusedFile(directory: DirectoryHandle, names: string[]): Promise<TemplateFileHandle> {
+  for (const candidate of names) {
+    try {
+      await directory.getFileHandle(candidate)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "NotFoundError") {
+        return directory.getFileHandle(candidate, { create: true })
+      }
+      throw error
+    }
+  }
+  const fallback = names[0]?.replace(/\.psd$/i, "") ?? "template"
+  return directory.getFileHandle(`${fallback} ${Date.now()}.psd`, { create: true })
+}
+
+async function createInFolder(
+  pickDirectory: NonNullable<FilePickerWindow["showDirectoryPicker"]>,
+  fileName: string,
+  copyOnly: boolean,
+): Promise<TemplateFileHandle> {
+  const directory = await pickDirectory({ mode: "readwrite" })
+  await grantWrite(directory)
+  const created = await createUnusedFile(directory, nameOptions(fileName, copyOnly))
+  await grantWrite(created)
+  return created
+}
+
+export async function chooseTemplateFile(name: string): Promise<{ ok: true; name: string } | { ok: false; reason: "cancel" | "unsupported" }> {
+  const host = window as FilePickerWindow
+  if (!host.showDirectoryPicker && !host.showSaveFilePicker) return { ok: false, reason: "unsupported" }
+  try {
+    const next = host.showDirectoryPicker
+      ? await createInFolder(host.showDirectoryPicker, suggestedFileName(name), false)
+      : await host.showSaveFilePicker!({
+          suggestedName: suggestedFileName(name),
+          types: [PSD_TYPE],
+        })
+    if (!host.showDirectoryPicker) await grantWrite(next)
     await flush()
     handle = next
     notify({ name: next.name, phase: "saving" })
@@ -86,7 +154,8 @@ export async function chooseTemplateFile(name: string): Promise<{ ok: true; name
 }
 
 export async function pickTemplateToOpen(): Promise<{ file: File; adopt: () => void } | null> {
-  const pick = (window as FilePickerWindow).showOpenFilePicker
+  const host = window as FilePickerWindow
+  const pick = host.showOpenFilePicker
   if (!pick) return null
   const [picked] = await pick({
     multiple: false,
@@ -95,16 +164,17 @@ export async function pickTemplateToOpen(): Promise<{ file: File; adopt: () => v
       { description: "Azent template", accept: { "application/json": [".json"] } },
     ],
   })
+  const psd = picked.name.toLowerCase().endsWith(".psd")
+  const copy = psd && host.showDirectoryPicker ? await createInFolder(host.showDirectoryPicker, picked.name, true) : null
   const file = await picked.getFile()
-  const psd = file.name.toLowerCase().endsWith(".psd")
   return {
     file,
     adopt: () => {
-      if (!psd) return
+      if (!copy) return
       dirty = false
       snapshot = null
-      handle = picked
-      notify({ name: picked.name, phase: "saved" })
+      handle = copy
+      notify({ name: copy.name, phase: "saved" })
     },
   }
 }
@@ -147,17 +217,25 @@ async function flush(): Promise<void> {
   dirty = false
   writing = true
   notify({ name: file.name, phase: "saving" })
+  let allowed = false
   try {
+    allowed = await canWrite(file)
+    if (!allowed) {
+      dirty = true
+      if (handle === file) notify({ name: file.name, phase: "error" })
+      return
+    }
     const blob = await exportTemplatePsd(template)
     const writable = await file.createWritable()
     await writable.write(blob)
     await writable.close()
     if (handle === file) notify({ name: file.name, phase: dirty ? "saving" : "saved" })
   } catch (error) {
+    dirty = true
     if (handle === file) notify({ name: file.name, phase: "error" })
     useTemplateStore.getState().setStatus(error instanceof Error ? error.message : "Could not save the PSD.")
   } finally {
     writing = false
-    if (dirty) await flush()
+    if (dirty && allowed) await flush()
   }
 }
