@@ -39,11 +39,17 @@ export function LayerStyle() {
   const background = selectedId === BACKGROUND_LAYER_ID || !element
   const locked = Boolean(element && lockedWithAncestors(template.elements).has(element.id))
 
+  const title = element?.name?.trim() || (element ? layerTitle(element) : "Background")
+
   return (
-    <div className="editor-scroll min-h-[240px] flex-1 overflow-y-auto border-t border-[var(--ed-line-soft)] bg-[var(--ed-surface)] px-3 py-3">
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ed-secondary)]">Style</h3>
+    <div className="flex h-full min-h-0 flex-col bg-[var(--ed-surface)]">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--ed-line-soft)] px-3 py-2.5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ed-secondary)]">Style</h3>
+        <span className="min-w-0 truncate text-[11px] text-[var(--ed-muted)]">{title}</span>
+      </div>
+      <div className="editor-scroll min-h-0 flex-1 overflow-y-auto px-3 py-3">
       {locked ? (
-        <p className="mt-3 text-xs leading-5 text-[var(--ed-muted)]">Unlock this layer to change its size, color, or other settings.</p>
+        <p className="text-xs leading-5 text-[var(--ed-muted)]">Unlock this layer to change its size, color, or other settings.</p>
       ) : null}
       <fieldset disabled={locked} className={locked ? "pointer-events-none opacity-60" : undefined}>
       {element ? <NameField id={element.id} name={element.name ?? ""} /> : null}
@@ -84,8 +90,16 @@ export function LayerStyle() {
         <DecorationStyle element={element} onChange={(patch) => updateElement(element.id, patch)} />
       ) : null}
       </fieldset>
+      </div>
     </div>
   )
+}
+
+function layerTitle(element: TemplateElement): string {
+  if (element.type === "group") return "Group"
+  if (element.type === "text") return "Text"
+  if (element.type === "photo") return element.role === "cutout" ? "Cutout" : "Photo"
+  return "Decoration"
 }
 
 function NameField({ id, name }: { id: string; name: string }) {

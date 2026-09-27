@@ -1,4 +1,5 @@
 import { slugify } from "./exportService"
+import { rememberSessionFile, readSessionFile, sessionWasRestored } from "./editorSession"
 import { exportTemplatePsd } from "./psdExportService"
 import type { AlbumTemplate } from "../models/template"
 import { useTemplateStore } from "../store/templateStore"
@@ -144,7 +145,7 @@ export async function chooseTemplateFile(name: string): Promise<{ ok: true; name
         })
     if (!host.showDirectoryPicker) await grantWrite(next)
     await flush()
-    handle = next
+    assignHandle(next)
     notify({ name: next.name, phase: "saving" })
     return { ok: true, name: next.name }
   } catch (error) {
@@ -173,7 +174,7 @@ export async function pickTemplateToOpen(): Promise<{ file: File; adopt: () => v
       if (!copy) return
       dirty = false
       snapshot = null
-      handle = copy
+      assignHandle(copy)
       notify({ name: copy.name, phase: "saved" })
     },
   }
@@ -188,6 +189,35 @@ export async function saveDocumentNow(): Promise<void> {
 
 export function holdAutosave(paused: boolean): void {
   hold = paused
+}
+
+function assignHandle(file: TemplateFileHandle): void {
+  handle = file
+  rememberSessionFile(file)
+}
+
+export async function restoreDocumentFile(): Promise<void> {
+  if (!sessionWasRestored()) return
+  const file = await readSessionFile<TemplateFileHandle>()
+  if (!file?.name || typeof file.createWritable !== "function") return
+  handle = file
+  const allowed = await canWrite(file)
+  if (allowed) {
+    notify({ name: file.name, phase: "saved" })
+    useTemplateStore.getState().setStatus(`Restored your last session. Edits keep saving to ${file.name}.`)
+    return
+  }
+  notify({ name: file.name, phase: "idle" })
+  useTemplateStore.getState().setStatus(`Restored your last session. Click once to keep saving to ${file.name}.`)
+  const ask = () => {
+    document.removeEventListener("pointerdown", ask, true)
+    void grantWrite(file).then((ok) => {
+      if (!ok || handle !== file) return
+      notify({ name: file.name, phase: "saved" })
+      void saveDocumentNow()
+    })
+  }
+  document.addEventListener("pointerdown", ask, true)
 }
 
 export function startAutosave(): void {

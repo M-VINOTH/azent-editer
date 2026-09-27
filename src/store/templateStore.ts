@@ -137,6 +137,7 @@ interface TemplateStore {
   setBackgroundColor: (color: string) => void
   setShapeKind: (shape: PhotoShape) => void
   loadTemplate: (template: AlbumTemplate, statusMessage: string) => void
+  restoreSession: (template: AlbumTemplate, guides: SheetGuide[], selectedId: string | null) => void
   swapColors: () => void
   setScrollAll: (value: boolean) => void
   setShowGrid: (value: boolean) => void
@@ -490,6 +491,26 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
       ...withHistory(template, state.history, state.historyIndex),
       statusMessage,
     })),
+  restoreSession: (template, guides, selectedId) =>
+    set(() => {
+      const known = template.elements.some((element) => element.id === selectedId) || selectedId === BACKGROUND_LAYER_ID
+      return {
+        origin: "load" as const,
+        template,
+        guides,
+        selectedId: known ? selectedId : null,
+        selectedIds: known && selectedId ? [selectedId] : [],
+        layerFocus: null,
+        hiddenIds: [],
+        hiddenPhotoIds: [],
+        maskEdit: false,
+        maskDraw: false,
+        history: [cloneTemplate(template)],
+        historyIndex: 0,
+        validationErrors: validateTemplate(template).errors,
+        statusMessage: "Restored your last editing session.",
+      }
+    }),
   setScrollAll: (value) => set({ scrollAll: value, statusMessage: value ? "Scroll all windows is on. This spread is the only open window." : "Scroll all windows is off." }),
   setShowGrid: (value) => set({ showGrid: value, statusMessage: value ? "Grid is on." : "Grid is off." }),
   setSnapToGrid: (value) => set({ snapToGrid: value, statusMessage: value ? "Snap to grid is on." : "Snap to grid is off." }),

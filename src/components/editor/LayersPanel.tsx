@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react"
+import { Fragment, useEffect, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { LayerStyle } from "./LayerStyle"
 import { useTemplateStore, BACKGROUND_LAYER_ID } from "../../store/templateStore"
 import { hiddenWithAncestors, isInside, lockedWithAncestors, sortByZIndex } from "../../utils/geometry"
@@ -201,8 +201,34 @@ export function LayersPanel() {
     )
   }
 
+  const stylesOpen = selectedId != null
+  const [styleWidth, setStyleWidth, styleWidthRef] = usePaneWidth("azent-style-width", 300, 220, 480)
+  const [layersWidth, setLayersWidth, layersWidthRef] = usePaneWidth("azent-layers-width", 280, 220, 440)
+
   return (
-    <aside className="flex w-[280px] min-w-[280px] flex-col border-l border-[var(--ed-line)] bg-[var(--ed-panel)]">
+    <aside className="flex h-full shrink-0 border-l border-[var(--ed-line)] bg-[var(--ed-panel)]">
+      {stylesOpen ? (
+        <>
+          <PaneGrip label="Resize style" onDrag={(delta) => setStyleWidth((current) => current - delta)} />
+          <div className="min-h-0 shrink-0" style={{ width: styleWidth }}>
+            <LayerStyle />
+          </div>
+          <PaneGrip
+            label="Resize style and layers"
+            onDrag={(delta) => {
+              const nextStyle = styleWidthRef.current + delta
+              const nextLayers = layersWidthRef.current - delta
+              if (nextStyle < 220 || nextStyle > 480 || nextLayers < 220 || nextLayers > 440) return false
+              setStyleWidth(nextStyle)
+              setLayersWidth(nextLayers)
+              return true
+            }}
+          />
+        </>
+      ) : (
+        <PaneGrip label="Resize layers" onDrag={(delta) => setLayersWidth((current) => current - delta)} />
+      )}
+      <div className="flex min-h-0 shrink-0 flex-col" style={{ width: layersWidth }}>
       <div className="flex items-center justify-between border-b border-[var(--ed-line-soft)] px-3 py-2.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ed-secondary)]">Layers</h2>
         <span className="text-[11px] text-[var(--ed-muted)]">{layers.length}</span>
@@ -293,8 +319,57 @@ export function LayersPanel() {
           />
         </ul>
       </div>
-      <LayerStyle />
+      </div>
     </aside>
+  )
+}
+
+function usePaneWidth(key: string, fallback: number, min: number, max: number) {
+  const [width, setWidthState] = useState(() => {
+    const raw = localStorage.getItem(key)
+    const stored = raw == null ? Number.NaN : Number(raw)
+    return Number.isFinite(stored) ? Math.min(max, Math.max(min, stored)) : fallback
+  })
+  const widthRef = useRef(width)
+  const setWidth = (value: number | ((current: number) => number)) => {
+    const next = typeof value === "function" ? value(widthRef.current) : value
+    const clamped = Math.min(max, Math.max(min, Math.round(next)))
+    widthRef.current = clamped
+    setWidthState(clamped)
+    localStorage.setItem(key, String(clamped))
+  }
+  return [width, setWidth, widthRef] as const
+}
+
+function PaneGrip({ label, onDrag }: { label: string; onDrag: (delta: number) => boolean | void }) {
+  const drag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const startX = event.clientX
+    let lastX = startX
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+    const move = (pointer: PointerEvent) => {
+      if (onDrag(pointer.clientX - lastX) === false) return
+      lastX = pointer.clientX
+    }
+    const stop = () => {
+      target.removeEventListener("pointermove", move)
+      target.removeEventListener("pointerup", stop)
+      target.removeEventListener("pointercancel", stop)
+    }
+    target.addEventListener("pointermove", move)
+    target.addEventListener("pointerup", stop)
+    target.addEventListener("pointercancel", stop)
+  }
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      title={label}
+      onPointerDown={drag}
+      className="w-1.5 shrink-0 cursor-col-resize bg-[var(--ed-line-soft)] hover:bg-[var(--ed-accent)]"
+    />
   )
 }
 

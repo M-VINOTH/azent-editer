@@ -9,6 +9,7 @@ import { SelectionRefine } from "./components/editor/SelectionRefine"
 import { WorkspaceBar } from "./components/editor/WorkspaceBar"
 import type { EditorTool } from "./store/templateStore"
 import { startAutosave } from "./services/documentFile"
+import { startSessionKeep } from "./services/editorSession"
 import { useTemplateStore } from "./store/templateStore"
 
 const TOOL_KEYS: Partial<Record<string, { tool: EditorTool; status: string }>> = {
@@ -45,6 +46,7 @@ export default function App() {
 
   useEffect(() => {
     startAutosave()
+    startSessionKeep()
   }, [])
 
   useEffect(() => {
