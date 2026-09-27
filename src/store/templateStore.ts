@@ -27,7 +27,7 @@ import {
 import { createId, lockedWithAncestors, moveLayers, nextZIndex, placeLayer, sortByZIndex, swapZIndex } from "../utils/geometry"
 import { clearedGrade } from "../utils/photoGrade"
 import { autoRetouch } from "../utils/photoRetouch"
-import { shapeSize, shapeSvgUrl, strokeGraphic } from "../utils/shapeGraphic"
+import { markStrokeWidth, shapeSize, shapeSvgUrl, strokeGraphic } from "../utils/shapeGraphic"
 import { validateTemplate, type ValidationError } from "../utils/validation"
 
 export type EditorTool =
@@ -1592,8 +1592,8 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
     set((state) => {
       if (points.length === 0) return state
       const sheet = Math.min(state.template.canvas.width, state.template.canvas.height)
-      const strokeWidth = Math.max(kind === "brush" ? 28 : 8, Math.round(sheet * (kind === "brush" ? 0.016 : 0.004)))
-      const graphic = strokeGraphic(points, state.foregroundColor, strokeWidth)
+      const strokeWidth = markStrokeWidth(kind, sheet)
+      const graphic = strokeGraphic(points, state.foregroundColor, strokeWidth, kind === "brush")
       const element = createDecorationElement(
         {
           id: kind === "brush" ? "brush-mark" : "pencil-mark",
@@ -1614,7 +1614,12 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
         origin: "ui" as const,
         selectedId: element.id,
         ...withHistory(template, state.history, state.historyIndex),
-        statusMessage: kind === "brush" ? "Painted a brush stroke" : "Drew a pencil stroke",
+        statusMessage:
+          kind === "brush"
+            ? graphic.filled
+              ? "Filled the shape with the brush color."
+              : "Drew a brush line. Bring the end back near the start to fill the shape."
+            : "Drew a pencil stroke",
       }
     }),
 

@@ -20,7 +20,7 @@ const TOOL_KEYS: Partial<Record<string, { tool: EditorTool; status: string }>> =
   t: { tool: "text", status: "Type — click the sheet to place text. Double-click type to edit it." },
   m: { tool: "marquee", status: "Marquee — drag a box around a layer to select it." },
   w: { tool: "wand", status: "Magic wand — click a layer to select it." },
-  b: { tool: "brush", status: "Brush — drag on the sheet to paint." },
+  b: { tool: "brush", status: "Brush — drag to paint. The mark follows the cursor. Finish near the start to fill the shape." },
   e: { tool: "eraser", status: "Eraser — click a layer to delete it." },
 }
 

@@ -24,6 +24,7 @@ import type { SheetGuide } from "../../store/templateStore"
 import { fitScale, hiddenWithAncestors, lockedWithAncestors } from "../../utils/geometry"
 import type { LayerMask, PhotoElement } from "../../models/template"
 import { hitMask, layerLocalPoint, maskNormalized, moveMask, paintMaskOverlay, type MaskGesture } from "../../utils/layerMask"
+import { markStrokeWidth, paintLiveStroke } from "../../utils/shapeGraphic"
 import {
   finishRetouch,
   hasCloneSource,
@@ -235,7 +236,7 @@ export function AlbumCanvas() {
     let retouchFrame = 0
     let crop: { id: string; lastX: number; lastY: number; moved: boolean } | null = null
     let hand: { x: number; y: number; panX: number; panY: number } | null = null
-    let stroke: { kind: "pencil" | "brush"; points: { x: number; y: number }[] } | null = null
+    let stroke: { kind: "pencil" | "brush"; points: { x: number; y: number }[]; cursor: { x: number; y: number } | null } | null = null
     let wheelCommit = 0
 
     const photoInsideEdit = (): PhotoElement | undefined => {
@@ -320,6 +321,19 @@ export function AlbumCanvas() {
     canvas.on("after:render", ({ ctx }) => {
       paintSizeGuides(canvas, ctx)
       paintSmartGuides(canvas, ctx)
+      if (stroke && stroke.points.length > 0) {
+        const editingStroke = useTemplateStore.getState()
+        const sheet = Math.min(editingStroke.template.canvas.width, editingStroke.template.canvas.height)
+        const live = stroke.cursor ? [...stroke.points, stroke.cursor] : stroke.points
+        paintLiveStroke(
+          ctx,
+          canvas.viewportTransform,
+          live,
+          editingStroke.foregroundColor,
+          markStrokeWidth(stroke.kind, sheet),
+          stroke.kind === "brush",
+        )
+      }
       const editing = useTemplateStore.getState()
       if (!editing.maskEdit) return
       const masked = editing.template.elements.find((item) => item.id === editing.selectedId)
@@ -427,7 +441,8 @@ export function AlbumCanvas() {
       }
       if (mode === "pencil" || mode === "brush") {
         const point = canvas.getScenePoint(pointerEvent)
-        stroke = { kind: mode, points: [{ x: point.x, y: point.y }] }
+        stroke = { kind: mode, points: [{ x: point.x, y: point.y }], cursor: null }
+        canvas.requestRenderAll()
         return
       }
       if (mode === "shape") {
@@ -569,10 +584,12 @@ export function AlbumCanvas() {
         return
       }
       if (stroke) {
-        const point = clientToDesign(canvas, event.clientX, event.clientY)
+        const point = canvas.getScenePoint(event)
         const last = stroke.points[stroke.points.length - 1]
-        if (Math.hypot(point.x - last.x, point.y - last.y) < 4) return
-        stroke.points.push(point)
+        const zoom = canvas.getZoom() || 1
+        stroke.cursor = Math.hypot(point.x - last.x, point.y - last.y) < 0.5 ? null : point
+        if (Math.hypot(point.x - last.x, point.y - last.y) >= 2.5 / zoom) stroke.points.push(point)
+        canvas.requestRenderAll()
         return
       }
       if (hand) {
@@ -620,8 +637,11 @@ export function AlbumCanvas() {
         if (moved) commitHistory()
       }
       if (stroke) {
-        useTemplateStore.getState().placeStroke(stroke.points, stroke.kind)
+        const drawn = stroke
+        if (drawn.cursor) drawn.points.push(drawn.cursor)
         stroke = null
+        canvas.requestRenderAll()
+        useTemplateStore.getState().placeStroke(drawn.points, drawn.kind)
       }
       if (crop?.moved) commitHistory()
       crop = null

@@ -47,7 +47,7 @@ const GROUPS: { title: string; tools: ToolItem[] }[] = [
   {
     title: "Draw",
     tools: [
-      { id: "brush", label: "Brush", hint: "Brush — drag on the sheet to paint.", icon: "brush" },
+      { id: "brush", label: "Brush", hint: "Brush — drag to paint. The mark follows the cursor. Finish near the start to fill the shape.", icon: "brush" },
       { id: "eraser", label: "Eraser", hint: "Eraser — click a layer to delete it.", icon: "eraser" },
       { id: "bucket", label: "Bucket", hint: "Paint bucket — click the sheet to fill the background, or click type to recolor it.", icon: "bucket" },
       { id: "shape", label: "Shape", hint: "Shape — choose rectangle, circle, oval, or another frame, then click the sheet.", icon: "shape" },

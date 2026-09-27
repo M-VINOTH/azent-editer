@@ -485,7 +485,7 @@ function hintFor(tool: string): string {
   if (tool === "text") return "Click the sheet to place type. Double-click type to edit it."
   if (tool === "shape") return "Choose a shape below, then click the sheet. Select a shape to change it."
   if (tool === "pencil") return "Drag on the sheet to draw. A click leaves a dot."
-  if (tool === "brush") return "Drag on the sheet to paint with the foreground color."
+  if (tool === "brush") return "Drag to paint. The mark follows the cursor. Finish near the start to fill the shape."
   if (tool === "bucket") return "Click empty sheet to fill the background, or click type to recolor it."
   if (tool === "subject") return "Click a photo. The person stays and the background is removed."
   if (tool === "clone") return "Click a layer to duplicate it."
