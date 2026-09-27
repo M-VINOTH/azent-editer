@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="860" viewBox="0 0 640 860">
+  <ellipse cx="320" cy="780" rx="210" ry="46" fill="#C45F7A" opacity="0.22"/>
+  <ellipse cx="320" cy="700" rx="200" ry="90" fill="#F0A3B4"/>
+  <ellipse cx="320" cy="686" rx="168" ry="70" fill="#F7B9C6"/>
+  <ellipse cx="320" cy="672" rx="110" ry="36" fill="#E889A0"/>
+  <path d="M250 430 C 230 520, 210 590, 188 680 C 250 710, 390 710, 452 680 C 430 590, 410 520, 390 430 Z" fill="#F2C2B0"/>
+  <path d="M214 390 C 170 430, 150 520, 168 610 C 210 590, 250 575, 292 572 C 286 500, 278 440, 270 400 Z" fill="#E8788A"/>
+  <path d="M426 390 C 470 430, 490 520, 472 610 C 430 590, 390 575, 348 572 C 354 500, 362 440, 370 400 Z" fill="#E8788A"/>
+  <path d="M236 300 C 210 360, 200 470, 248 560 C 292 590, 348 590, 392 560 C 440 470, 430 360, 404 300 C 360 330, 280 330, 236 300 Z" fill="#EE7F93"/>
+  <path d="M250 318 C 270 350, 370 350, 390 318 C 372 368, 268 368, 250 318 Z" fill="#F4A0B0"/>
+  <circle cx="320" cy="198" r="118" fill="#F3C7B0"/>
+  <path d="M214 176 C 220 86, 292 48, 332 56 C 388 28, 456 86, 444 168 C 428 118, 372 98, 332 112 C 284 90, 236 118, 214 176 Z" fill="#4A2E28"/>
+  <ellipse cx="276" cy="206" rx="16" ry="10" fill="#FFFFFF"/>
+  <ellipse cx="364" cy="206" rx="16" ry="10" fill="#FFFFFF"/>
+  <circle cx="278" cy="208" r="7" fill="#3B241C"/>
+  <circle cx="366" cy="208" r="7" fill="#3B241C"/>
+  <path d="M304 232 C 314 242, 326 242, 336 232" fill="none" stroke="#C57A72" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="252" cy="228" rx="18" ry="10" fill="#E8898A" opacity="0.55"/>
+  <ellipse cx="388" cy="228" rx="18" ry="10" fill="#E8898A" opacity="0.55"/>
+  <path d="M278 158 C 292 148, 308 152, 318 164" fill="none" stroke="#5A3A32" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+  <path d="M348 160 C 360 150, 376 154, 384 166" fill="none" stroke="#5A3A32" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+  <circle cx="198" cy="430" r="28" fill="#F3C7B0"/>
+  <circle cx="442" cy="430" r="28" fill="#F3C7B0"/>
+  <path d="M198 430 C 150 470, 148 540, 186 598" fill="none" stroke="#F3C7B0" stroke-width="36" stroke-linecap="round"/>
+  <path d="M442 430 C 490 470, 492 540, 454 598" fill="none" stroke="#F3C7B0" stroke-width="36" stroke-linecap="round"/>
+</svg>

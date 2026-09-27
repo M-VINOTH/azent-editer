@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --ed-app: #d0d0d0;
+  --ed-stage: #c8c8c8;
+  --ed-panel: #f4f4f4;
+  --ed-raised: #ececec;
+  --ed-ruler: #e7e7e7;
+  --ed-surface: #ffffff;
+  --ed-line: #d5d5d5;
+  --ed-line-soft: #e0e0e0;
+  --ed-ink: #222222;
+  --ed-text: #333333;
+  --ed-secondary: #555555;
+  --ed-muted: #777777;
+  --ed-hover: #111111;
+  --ed-accent: #1473e6;
+  --ed-accent-ink: #0d66d0;
+  --ed-accent-wash: #e8f1fc;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ed-app: #1c1c1c;
+  --ed-stage: #252525;
+  --ed-panel: #2d2d2d;
+  --ed-raised: #383838;
+  --ed-ruler: #2a2a2a;
+  --ed-surface: #323232;
+  --ed-line: #4a4a4a;
+  --ed-line-soft: #3f3f3f;
+  --ed-ink: #f3f3f3;
+  --ed-text: #e8e8e8;
+  --ed-secondary: #c4c4c4;
+  --ed-muted: #9a9a9a;
+  --ed-hover: #ffffff;
+  --ed-accent: #4c9aff;
+  --ed-accent-ink: #8dc2ff;
+  --ed-accent-wash: #1a3f6e;
+}
+
+@theme {
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-display: "Great Vibes", cursive;
+  --font-classic: "Cormorant Garamond", Georgia, serif;
+}
+
+@theme inline {
+  --color-ink: var(--ed-ink);
+  --color-muted: var(--ed-muted);
+  --color-gold: var(--ed-accent);
+  --color-gold-strong: var(--ed-accent-ink);
+  --color-panel: var(--ed-panel);
+  --color-panel-2: var(--ed-surface);
+  --color-line: var(--ed-line);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ed-app);
+  color: var(--ed-ink);
+  font-family: var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.editor-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.editor-scroll::-webkit-scrollbar-thumb {
+  background: var(--ed-line);
+  border-radius: 99px;
+}
+
+.editor-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
